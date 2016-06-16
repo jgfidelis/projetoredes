@@ -85,8 +85,14 @@ void *connection_handler(void *socket_desc)
     int sock = *(int*)socket_desc;
     int read_size;
     char *message , client_message[2000];
+    char username[100];
 
-
+    //Pegar o username dessa thread
+    if (recv(sock , client_message , 2000 , 0) >  0){
+        strcpy(username, client_message);
+        bzero(client_message, 2000);
+        //printf("User: %s logged in\n", username);
+    }
     //Receive a message from client
     while( (read_size = recv(sock , client_message , 2000 , 0)) > 0 )
     {

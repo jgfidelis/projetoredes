@@ -14,6 +14,11 @@ João Guilherme Fidelis 136242
 
 #define MAX_LINE 256
 
+void printName(char *username) {
+    printf("[ %s ] ", username);
+
+}
+
 int main(int argc, char * argv[])
 {
     FILE *fp;
@@ -59,20 +64,19 @@ int main(int argc, char * argv[])
         close(s);
         exit(1);
     }
-    struct sockaddr_in clientSocket;
-    socklen_t temp = sizeof(clientSocket);
-    if (getsockname(s, (struct sockaddr *)&clientSocket, &temp) == 0) {
-        char ipAddress[INET_ADDRSTRLEN];
-        inet_ntop(AF_INET, &(clientSocket.sin_addr), ipAddress, INET_ADDRSTRLEN);
-        printf("The IP address is: %s\n", ipAddress);
-        printf ("The port is: %d\n", (int) ntohs(clientSocket.sin_port));
 
-    }
+    //Conectado!
+
+    send(s, username, strlen(username)+1, 0);
+
+    //Nome enviado ao servidor!
+    printName(username);
 
     /* main loop: get and send lines of text */
     while (fgets(buf, sizeof(buf), stdin)) {
         buf[MAX_LINE-1] = '\0';
         len = strlen(buf) + 1;
         send(s, buf, len, 0);
+        printName(username);
     }
 }
