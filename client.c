@@ -73,10 +73,20 @@ int main(int argc, char * argv[])
     printName(username);
 
     /* main loop: get and send lines of text */
-    while (fgets(buf, sizeof(buf), stdin)) {
+    while (1) {
+        fgets(buf, sizeof(buf), stdin);
         buf[MAX_LINE-1] = '\0';
         len = strlen(buf) + 1;
         send(s, buf, len, 0);
         printName(username);
+        bzero(buf, MAX_LINE);
+
+
+       if (recv(s , buf , MAX_LINE , 0) > 0){
+            fputs(buf, stdout);
+        }
+
+
     }
+
 }
