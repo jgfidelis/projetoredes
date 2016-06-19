@@ -39,7 +39,7 @@ Group grupos[100];
 void sendToUser(char userDestination[], char mensagem[], char userSource[]);
 void logout(int sourceid);
 
-void printUserOnline();
+void printUserOnline(int sourceid);
 void createGroup(char group[], int sourceid);
 
 void joinGroup(char group[], int sourceid);
@@ -112,7 +112,7 @@ void commandCall(char *command, char restOfString[], char userSource[], int sour
     else if (strcmp(command, "WHO") == 0){
         //imprime lista de usuarios online
         printf("imprimidno\n");
-        printUserOnline();
+        printUserOnline(sourceid);
     }
     else if (strcmp(command, "EXIT") == 0){
         //faz logout
@@ -197,15 +197,22 @@ void logout(int sourceid) {
 
 }
 
-void printUserOnline() {
+void printUserOnline(int sourceid) {
     int i;
-    printf("| usuario | status |\n");
+    int sock = usuarios[sourceid].socket;
+    char buffer[1024];
+    snprintf(buffer, sizeof(buffer), "| usuario | status |\n");
+    send(sock, buffer, strlen(buffer)+1, 0);
+    bzero(buffer, 1024);
     for (i = 0; i < numberOfUsers; i++){
-        printf("| %s | ", usuarios[i].username);
         if (usuarios[i].online == 1){
-            printf("online |\n");
+            snprintf(buffer, sizeof(buffer), "| %s | online |\n", usuarios[i].username);
+            send(sock, buffer, strlen(buffer)+1, 0);
+            bzero(buffer, 1024);
         } else {
-            printf("offline |\n");
+            snprintf(buffer, sizeof(buffer), "| %s | offline |\n", usuarios[i].username);
+            send(sock, buffer, strlen(buffer)+1, 0);
+            bzero(buffer, 1024);
         }
     }
 }
