@@ -20,7 +20,7 @@ void *connection_handler(void *);
 //char userDatabase[100][100];
 pthread_mutex_t lock;
 int numberOfUsers;
-
+int numberOfGroups;
 typedef struct _usuario {
     char username[100];
     int online;
@@ -28,10 +28,27 @@ typedef struct _usuario {
 
 } Usuario;
 
-Usuario usuarios[100];
-void sendToUser(char userDestination[], char mensagem[], char userSource[]);
+typedef struct _group {
+    char groupName[100];
+    int usersids[50];
+    int usersInGroup;
+} Group;
 
-void commandCall(char *command, char restOfString[], char userSource[]){
+Usuario usuarios[100];
+Group grupos[100];
+void sendToUser(char userDestination[], char mensagem[], char userSource[]);
+void logout(int sourceid);
+
+void printUserOnline();
+void createGroup(char group[], int sourceid);
+
+void joinGroup(char group[], int sourceid);
+void sendToGroup(char groupName[], char mensagem[], char userSource[], int sourceid);
+
+
+
+void commandCall(char *command, char restOfString[], char userSource[], int sourceid){
+    printf("comparing\n");
     if (strcmp(command, "SEND") == 0){
         //send to userDestination
         //recebe <user> <message>
@@ -63,14 +80,14 @@ void commandCall(char *command, char restOfString[], char userSource[]){
         //recebe<group_name>
 
         //restOfString é o group name
-        //createGroup(restOfString)
+        createGroup(restOfString, sourceid);
     }
     else if (strcmp(command, "JOING") == 0){
         //join group
         //recebe <group_name>
         //restOfString é o group name
         //faz usuário que enviou se juntar ao grupo group name
-        //joinGroup(restOfString, username)
+        joinGroup(restOfString, sourceid);
     }
     else if (strcmp(command, "SENDG") == 0){
         //send message to group
@@ -89,16 +106,17 @@ void commandCall(char *command, char restOfString[], char userSource[]){
         mensagem[1999] = '\0';
 
         //envia ao grupo a mensagem
-        //sendToGroup(groupName, mensagem)
+        sendToGroup(groupName, mensagem, userSource, sourceid);
 
     }
     else if (strcmp(command, "WHO") == 0){
         //imprime lista de usuarios online
-        //printUserOnline();
+        printf("imprimidno\n");
+        printUserOnline();
     }
     else if (strcmp(command, "EXIT") == 0){
         //faz logout
-        //exit(username)
+        logout(sourceid);
     }
 }
 
@@ -173,6 +191,25 @@ int main(int argc, char* argv[])
     return 0;
 }
 
+void logout(int sourceid) {
+    usuarios[sourceid].online = 0;
+    //TODO avisar usuario que deu certo
+
+}
+
+void printUserOnline() {
+    int i;
+    printf("| usuario | status |\n");
+    for (i = 0; i < numberOfUsers; i++){
+        printf("| %s | ", usuarios[i].username);
+        if (usuarios[i].online == 1){
+            printf("online |\n");
+        } else {
+            printf("offline |\n");
+        }
+    }
+}
+
 int registraUsuario(char usernameToRegister[], int sock) {
     int i;
     for (i = 0; i < numberOfUsers; i++){
@@ -183,7 +220,7 @@ int registraUsuario(char usernameToRegister[], int sock) {
             //ver se ja tava logado!
             if (usuarios[i].online == 1){
                 //usuario ja esta logado!
-                //mandar mensagem para o cliente de que nao pode logar!
+                //TODO mandar mensagem para o cliente de que nao pode logar!
             } else {
                 usuarios[i].online = 1;
             }
@@ -212,11 +249,22 @@ int getUserNumber(char user[]) {
     return -1;
 }
 
+//retorna posicao de user no vetor ou -1 se nao existir
+int getGroupNumber(char grupo[]) {
+     int i;
+    for (i = 0; i < numberOfGroups; i++){
+        if (strcmp(grupos[i].groupName, grupo) == 0) {
+            return i;
+        }
+    }
+
+    return -1;
+}
+
 void sendToUser(char userDestination[], char mensagem[], char userSource[]) {
 
     char buffer[1024];
     snprintf(buffer, sizeof(buffer), "[%s>] %s", userSource, mensagem);
-    pthread_mutex_lock(&lock);
     int num = getUserNumber(userDestination);
     if (num < 0) {
         //envia erro pro userSource, userDestination nao existe
@@ -232,9 +280,78 @@ void sendToUser(char userDestination[], char mensagem[], char userSource[]) {
     } else {
         //colocar para enviar depois
     }
+}
 
+void createGroup(char group[], int sourceid) {
+    //procurar no vetor e ver se grupo ja esta criado
+    int i;
+    for (i = 0; i < numberOfGroups; i++){
+        if (strcmp(group, grupos[i].groupName) == 0) {
+            //grupo ja existe
+            //talvez avisar usuario
+            return;
+        }
+    }
 
-    pthread_mutex_unlock(&lock);
+    //chegou aqui eh para criar
+    strcpy(grupos[numberOfGroups].groupName, group);
+    grupos[numberOfGroups].usersids[0] = sourceid;
+    grupos[numberOfGroups].usersInGroup=1;
+    //avisar que deu certo?
+    numberOfGroups++;
+
+}
+
+void joinGroup(char group[], int sourceid) {
+    //procurar no vetor e ver se grupo ja esta criado
+    int i;
+    for (i = 0; i < numberOfGroups; i++){
+        if (strcmp(group, grupos[i].groupName) == 0) {
+            int num =grupos[i].usersInGroup;
+            //ver se usuario ja não esta no grupo
+            int j;
+            for (j = 0; j < num; j++){
+                if (grupos[i].usersids[j] == sourceid){
+                    //usuario ja esta no grupo
+                    //TODO mandar erro
+                    return;
+                }
+            }
+            grupos[i].usersids[num] = sourceid;
+            grupos[i].usersInGroup++;
+            //TODO avisar que deu certo
+            return;
+        }
+    }
+}
+
+void sendToGroup(char groupName[], char mensagem[], char userSource[], int sourceid) {
+    char buffer[2000];
+    snprintf(buffer, sizeof(buffer), "(Em: %s) [%s>] %s", groupName, userSource, mensagem);
+
+    int num = getGroupNumber(groupName);
+    if (num < 0) {
+        //TODO avisar que deu ruim
+        return;
+    }
+
+    int i;
+    //mandar mensagem para todos
+    for (i = 0; i < grupos[num].usersInGroup; i++) {
+        int id = grupos[num].usersids[i];
+        if (id != sourceid) {
+            if (usuarios[id].online == 1) {
+                //enviar
+                buffer[1999] = '\0';
+                int len = strlen(buffer) + 1;
+                send(usuarios[id].socket, buffer, len, 0);
+            } else {
+                //TODO usuario esta offline!
+                //salvar em aquivo
+            }
+        }
+    }
+
 }
 
 void *connection_handler(void *socket_desc)
@@ -244,19 +361,21 @@ void *connection_handler(void *socket_desc)
     int read_size;
     char *message , client_message[2000];
     char username[100];
-
+    int id;
     //Pegar o username dessa thread
     if (recv(sock , client_message , 2000 , 0) >  0){
         strcpy(username, client_message);
         bzero(client_message, 2000);
         //printf("User: %s logged in\n", username);
-        pthread_mutex_lock(&lock);
+
         //peguei o lock
         //strcpy(userDatabase[numberOfUsers], username);
         //numberOfUsers++;
-        registraUsuario(username, sock);
-        printf("usuario %s registrado\n", client_message);
+        pthread_mutex_lock(&lock);
+        id = registraUsuario(username, sock);
         pthread_mutex_unlock(&lock);
+        printf("usuario %s registrado\n", client_message);
+
         //liberei o lock
 
     }
@@ -268,23 +387,37 @@ void *connection_handler(void *socket_desc)
         int i;
         char command[10] = {'\0'};
         char mensagem[2000];
-        for(i=0; client_message[i] != ' '; i++) {
+        i = 0;
+        /*while(1) {
+            if (client_message[i] != '\0' && client_message[i] != ' ' && client_message[i] != '\n'){
+                printf("i:%d e c:%c\n", i, client_message[i]);
+                command[i] = client_message[i];
+                i++;
+            } else {
+                break;
+            }
+        }*/
+
+        for(i=0; client_message[i] != ' ' && client_message[i] != '\0' && client_message[i] != '\n'; i++) {
+            //printf("i:%d e c:%c\n", i, client_message[i]);
             command[i] = client_message[i];
         }
         command[i] = '\0';
-        //char *command =strtok(client_message, " ");
         int lenCommand = strlen(command);
 
         for (i = 0; i + lenCommand + 1 < 2000 ; i++)
             mensagem[i] = client_message[i+lenCommand+1];
         mensagem[1999] = '\0';
-        printf("command: %s\n", command);
-        printf ("tamanhos : %d\n", strlen(command));
-        printf("Mensagem: %s\n", mensagem);
 
-        commandCall(command, mensagem, username);
+        bzero(client_message, 2000);
+        printf("command: %s\n", command);
+        printf ("tamanhos : %d\n", lenCommand);
+        printf("Mensagem: %s\n", mensagem);
+        pthread_mutex_lock(&lock);
+        commandCall(command, mensagem, username, id);
+        pthread_mutex_unlock(&lock);
         //Send the message back to client
-        write(sock , client_message , strlen(client_message));
+        //write(sock , client_message , strlen(client_message));
     }
 
     if(read_size == 0)

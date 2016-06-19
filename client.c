@@ -12,12 +12,15 @@ João Guilherme Fidelis 136242
 #include <netinet/in.h>
 #include <netdb.h>
 
+#include <ncurses.h>
+
 #define MAX_LINE 256
 
 void printName(char *username) {
     printf("[ %s ] ", username);
 
 }
+
 
 int main(int argc, char * argv[])
 {
@@ -69,24 +72,61 @@ int main(int argc, char * argv[])
 
     send(s, username, strlen(username)+1, 0);
 
+
     //Nome enviado ao servidor!
     printName(username);
-
-    /* main loop: get and send lines of text */
-    while (1) {
-        fgets(buf, sizeof(buf), stdin);
-        buf[MAX_LINE-1] = '\0';
-        len = strlen(buf) + 1;
-        send(s, buf, len, 0);
-        printName(username);
-        bzero(buf, MAX_LINE);
-
-
-       if (recv(s , buf , MAX_LINE , 0) > 0){
+    int pid= fork();
+    if (pid == 0) {
+        while(recv(s , buf , MAX_LINE , 0) > 0){
+            printf("\r");
             fputs(buf, stdout);
         }
-
-
+        close(s);
+    } else {
+        while(fgets(buf, sizeof(buf), stdin)){
+            buf[MAX_LINE-1] = '\0';
+            len = strlen(buf) + 1;
+            send(s, buf, len, 0);
+            //printName(username);
+            printf("%s\n", buf);
+            printName(username);
+        }
+        close(s);
     }
+    return 0;
 
+}
+
+WINDOW *create_newwin(int height, int width, int starty, int startx)
+{   WINDOW *local_win;
+
+    local_win = newwin(height, width, starty, startx);
+    box(local_win, 0 , 0);      /* 0, 0 gives default characters
+                     * for the vertical and horizontal
+                     * lines            */
+    wrefresh(local_win);        /* Show that box        */
+
+    return local_win;
+}
+
+void destroy_win(WINDOW *local_win)
+{
+    /* box(local_win, ' ', ' '); : This won't produce the desired
+     * result of erasing the window. It will leave it's four corners
+     * and so an ugly remnant of window.
+     */
+    wborder(local_win, ' ', ' ', ' ',' ',' ',' ',' ',' ');
+    /* The parameters taken are
+     * 1. win: the window on which to operate
+     * 2. ls: character to be used for the left side of the window
+     * 3. rs: character to be used for the right side of the window
+     * 4. ts: character to be used for the top side of the window
+     * 5. bs: character to be used for the bottom side of the window
+     * 6. tl: character to be used for the top left corner of the window
+     * 7. tr: character to be used for the top right corner of the window
+     * 8. bl: character to be used for the bottom left corner of the window
+     * 9. br: character to be used for the bottom right corner of the window
+     */
+    wrefresh(local_win);
+    delwin(local_win);
 }
