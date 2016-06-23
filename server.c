@@ -45,7 +45,7 @@ void createGroup(char group[], int sourceid);
 void joinGroup(char group[], int sourceid);
 void sendToGroup(char groupName[], char mensagem[], char userSource[], int sourceid);
 
-
+void sendInvalidCommand(int sourceid);
 
 void commandCall(char *command, char restOfString[], char userSource[], int sourceid){
     printf("comparing\n");
@@ -117,6 +117,9 @@ void commandCall(char *command, char restOfString[], char userSource[], int sour
     else if (strcmp(command, "EXIT") == 0){
         //faz logout
         logout(sourceid);
+    }
+    else {
+        sendInvalidCommand(sourceid);
     }
 }
 
@@ -193,8 +196,22 @@ int main(int argc, char* argv[])
 
 void logout(int sourceid) {
     usuarios[sourceid].online = 0;
-    //TODO avisar usuario que deu certo
+    
+    int sock = usuarios[sourceid].socket;
+    char buffer[1024];
+    
+    snprintf(buffer, sizeof(buffer), "Você foi desconectado\n");
 
+    send(sock, buffer, strlen(buffer)+1, 0);
+}
+
+void sendInvalidCommand(int sourceid) {
+    int sock = usuarios[sourceid].socket;
+    char buffer[1024];
+    
+    snprintf(buffer, sizeof(buffer), "Comando inválido\n");
+
+    send(sock, buffer, strlen(buffer)+1, 0);
 }
 
 void printUserOnline(int sourceid) {
@@ -219,6 +236,7 @@ void printUserOnline(int sourceid) {
 
 int registraUsuario(char usernameToRegister[], int sock) {
     int i;
+    char buffer[1024];
     for (i = 0; i < numberOfUsers; i++){
             printf("i:%d s:%s\n", i, usuarios[i].username);
         if (strcmp(usuarios[i].username, usernameToRegister) == 0) {
@@ -227,7 +245,9 @@ int registraUsuario(char usernameToRegister[], int sock) {
             //ver se ja tava logado!
             if (usuarios[i].online == 1){
                 //usuario ja esta logado!
-                //TODO mandar mensagem para o cliente de que nao pode logar!
+                snprintf(buffer, sizeof(buffer), "Usuário já está logado\n");
+
+                send(sock, buffer, strlen(buffer)+1, 0);
             } else {
                 usuarios[i].online = 1;
             }
@@ -285,7 +305,7 @@ void sendToUser(char userDestination[], char mensagem[], char userSource[]) {
         printf("enviando para %s\n", userDestination);
         send(sockUser, buffer, len, 0);
     } else {
-        //colocar para enviar depois
+        //TODO colocar para enviar depois
     }
 }
 
@@ -312,6 +332,10 @@ void createGroup(char group[], int sourceid) {
 void joinGroup(char group[], int sourceid) {
     //procurar no vetor e ver se grupo ja esta criado
     int i;
+    char buffer[1024];
+
+    int sock = usuarios[sourceid].socket;
+
     for (i = 0; i < numberOfGroups; i++){
         if (strcmp(group, grupos[i].groupName) == 0) {
             int num =grupos[i].usersInGroup;
@@ -320,13 +344,18 @@ void joinGroup(char group[], int sourceid) {
             for (j = 0; j < num; j++){
                 if (grupos[i].usersids[j] == sourceid){
                     //usuario ja esta no grupo
-                    //TODO mandar erro
+                    snprintf(buffer, sizeof(buffer), "Você já faz parte deste grupo\n");
+
+                    send(sock, buffer, strlen(buffer)+1, 0);
                     return;
                 }
             }
             grupos[i].usersids[num] = sourceid;
             grupos[i].usersInGroup++;
-            //TODO avisar que deu certo
+            //avisar que deu certo
+            snprintf(buffer, sizeof(buffer), "Você foi adicionado ao grupo com sucesso\n");
+
+            send(sock, buffer, strlen(buffer)+1, 0);
             return;
         }
     }
@@ -336,9 +365,13 @@ void sendToGroup(char groupName[], char mensagem[], char userSource[], int sourc
     char buffer[2000];
     snprintf(buffer, sizeof(buffer), "(Em: %s) [%s>] %s", groupName, userSource, mensagem);
 
+    int sock = usuarios[sourceid].socket;
     int num = getGroupNumber(groupName);
     if (num < 0) {
-        //TODO avisar que deu ruim
+        //avisar que deu ruim
+        snprintf(buffer, sizeof(buffer), "Grupo não existe\n");
+
+        send(sock, buffer, strlen(buffer)+1, 0);
         return;
     }
 
