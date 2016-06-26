@@ -291,21 +291,49 @@ int getGroupNumber(char grupo[]) {
 void sendToUser(char userDestination[], char mensagem[], char userSource[]) {
 
     char buffer[1024];
-    snprintf(buffer, sizeof(buffer), "[%s>] %s", userSource, mensagem);
+
+    FILE *fp;
+    
     int num = getUserNumber(userDestination);
     if (num < 0) {
         //envia erro pro userSource, userDestination nao existe
+        num = getUserNumber(userSource);
+
+        int sock = usuarios[num].socket;
+    
+        snprintf(buffer, sizeof(buffer), "Usuario inexistente\n");
+        send(sock, buffer, strlen(buffer)+1, 0);
+
+        return;
     }
+    
     printf("Usuario achado em %d\n", num);
+    snprintf(buffer, sizeof(buffer), "[%s>] %s", userSource, mensagem);
+    
     if (usuarios[num].online == 1) {
         //envia ja
         int sockUser = usuarios[num].socket;
+
         buffer[1023] = '\0';
+
         int len = strlen(buffer) + 1;
+
         printf("enviando para %s\n", userDestination);
+
         send(sockUser, buffer, len, 0);
     } else {
         //TODO colocar para enviar depois
+        fp = fopen(userDestination, "a+");
+        fputs(buffer, fp);
+        fclose(fp);
+
+        num = getUserNumber(userSource);
+
+        int sock = usuarios[num].socket;
+    
+        snprintf(buffer, sizeof(buffer), "Usuario offline, sua mensagem 
+            sera estregue proxima vez que este usuario entrar\n");
+        send(sock, buffer, strlen(buffer)+1, 0);
     }
 }
 
@@ -315,7 +343,12 @@ void createGroup(char group[], int sourceid) {
     for (i = 0; i < numberOfGroups; i++){
         if (strcmp(group, grupos[i].groupName) == 0) {
             //grupo ja existe
-            //talvez avisar usuario
+            int sock = usuarios[sourceid].socket;
+            char buffer[1024];
+    
+            snprintf(buffer, sizeof(buffer), "Grupo ja existente\n");
+
+            send(sock, buffer, strlen(buffer)+1, 0);
             return;
         }
     }
@@ -462,6 +495,7 @@ void *connection_handler(void *socket_desc)
 
     if(read_size == 0)
     {
+        logout(id);
         puts("Client disconnected");
         fflush(stdout);
     }
