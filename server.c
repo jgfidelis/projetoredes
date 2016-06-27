@@ -25,6 +25,7 @@ typedef struct _usuario {
     char username[100];
     int online;
     int socket;
+    int hasOfflineMessages;
 
 } Usuario;
 
@@ -260,6 +261,7 @@ int registraUsuario(char usernameToRegister[], int sock) {
     strcpy(usuarios[numberOfUsers].username, usernameToRegister);
     usuarios[numberOfUsers].online = 1;
     usuarios[numberOfUsers].socket = sock;
+    usuarios[numberOfUsers].hasOfflineMessages = 0;
     numberOfUsers++;
     return numberOfUsers-1;
 
@@ -323,16 +325,21 @@ void sendToUser(char userDestination[], char mensagem[], char userSource[]) {
         send(sockUser, buffer, len, 0);
     } else {
         //TODO colocar para enviar depois
+        printf("Colocando msgm no arquivo\n");
+        pthread_mutex_lock(&lock);
         fp = fopen(userDestination, "a+");
         fputs(buffer, fp);
         fclose(fp);
+
+        usuarios[num].hasOfflineMessages += 1;
+        pthread_mutex_unlock(&lock);
+        printf("Feito!\n");
 
         num = getUserNumber(userSource);
 
         int sock = usuarios[num].socket;
     
-        snprintf(buffer, sizeof(buffer), "Usuario offline, sua mensagem 
-            sera estregue proxima vez que este usuario entrar\n");
+        snprintf(buffer, sizeof(buffer), "Usuario offline, sua mensagem sera estregue proxima vez que este usuario entrar\n");
         send(sock, buffer, strlen(buffer)+1, 0);
     }
 }
@@ -427,6 +434,29 @@ void sendToGroup(char groupName[], char mensagem[], char userSource[], int sourc
 
 }
 
+void sendOfflineMessages (int id) {
+    char buffer[1024];
+    int sock = usuarios[id].socket;
+    FILE *fp;
+
+    fp = fopen(usuarios[id].username, "r");
+
+    printf("Usuario tem msgns offline, mandando...\n");
+
+    while (usuarios[id].hasOfflineMessages) {
+        fgets(buffer, 1024, (FILE*)fp);
+        send(sock, buffer, strlen(buffer)+1, 0);
+
+        bzero(buffer, 1024);
+
+        usuarios[id].hasOfflineMessages--;
+    }
+
+    printf("Feito, reescrevendo arquivo...\n");
+    freopen(usuarios[id].username, "w", fp);
+    fclose(fp);
+}
+
 void *connection_handler(void *socket_desc)
 {
     //Get the socket descriptor
@@ -446,6 +476,9 @@ void *connection_handler(void *socket_desc)
         //numberOfUsers++;
         pthread_mutex_lock(&lock);
         id = registraUsuario(username, sock);
+        if (usuarios[id].hasOfflineMessages) {
+            sendOfflineMessages(id);
+        }
         pthread_mutex_unlock(&lock);
         printf("usuario %s registrado\n", client_message);
 
