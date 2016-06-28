@@ -251,6 +251,7 @@ int registraUsuario(char usernameToRegister[], int sock) {
                 send(sock, buffer, strlen(buffer)+1, 0);
             } else {
                 usuarios[i].online = 1;
+                usuarios[i].socket = sock;
             }
             return i;
         }
@@ -443,16 +444,14 @@ void sendOfflineMessages (int id) {
     int numOfMessages = usuarios[id].hasOfflineMessages;
 
     while (numOfMessages) {
-        printf("1\n");
         fgets(buffer, 1024, fp);
-        printf("1\n");
+
         send(sock, buffer, strlen(buffer)+1, 0);
-        printf("1\n");
 
         bzero(buffer, 1024);
-        printf("1\n");
 
         numOfMessages--;
+        sleep(1);
     }
 
     usuarios[id].hasOfflineMessages = 0;
@@ -460,10 +459,6 @@ void sendOfflineMessages (int id) {
     printf("Feito, reescrevendo arquivo...\n");
     freopen(usuarios[id].username, "w", fp);
     fclose(fp);
-}
-
-void sendName(int id) {
-
 }
 
 void *connection_handler(void *socket_desc)
@@ -530,7 +525,6 @@ void *connection_handler(void *socket_desc)
         printf("Mensagem: %s\n", mensagem);
         pthread_mutex_lock(&lock);
         commandCall(command, mensagem, username, id);
-        sendName(id);
         pthread_mutex_unlock(&lock);
         //Send the message back to client
         //write(sock , client_message , strlen(client_message));

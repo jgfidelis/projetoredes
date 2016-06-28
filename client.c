@@ -81,6 +81,7 @@ int main(int argc, char * argv[])
             printf("\r");
             fputs(buf, stdout);
             printName(username);
+            bzero(buf, MAX_LINE);
         }
         close(s);
     } else {
@@ -91,6 +92,7 @@ int main(int argc, char * argv[])
             //printName(username);
             printf("%s\n", buf);
             printName(username);
+            bzero(buf, MAX_LINE);
         }
         close(s);
     }
