@@ -80,6 +80,7 @@ int main(int argc, char * argv[])
         while(recv(s , buf , MAX_LINE , 0) > 0){
             printf("\r");
             fputs(buf, stdout);
+            printName(username);
         }
         close(s);
     } else {

@@ -326,14 +326,11 @@ void sendToUser(char userDestination[], char mensagem[], char userSource[]) {
     } else {
         //TODO colocar para enviar depois
         printf("Colocando msgm no arquivo\n");
-        pthread_mutex_lock(&lock);
         fp = fopen(userDestination, "a+");
         fputs(buffer, fp);
         fclose(fp);
 
         usuarios[num].hasOfflineMessages += 1;
-        pthread_mutex_unlock(&lock);
-        printf("Feito!\n");
 
         num = getUserNumber(userSource);
 
@@ -443,18 +440,30 @@ void sendOfflineMessages (int id) {
 
     printf("Usuario tem msgns offline, mandando...\n");
 
-    while (usuarios[id].hasOfflineMessages) {
-        fgets(buffer, 1024, (FILE*)fp);
+    int numOfMessages = usuarios[id].hasOfflineMessages;
+
+    while (numOfMessages) {
+        printf("1\n");
+        fgets(buffer, 1024, fp);
+        printf("1\n");
         send(sock, buffer, strlen(buffer)+1, 0);
+        printf("1\n");
 
         bzero(buffer, 1024);
+        printf("1\n");
 
-        usuarios[id].hasOfflineMessages--;
+        numOfMessages--;
     }
+
+    usuarios[id].hasOfflineMessages = 0;
 
     printf("Feito, reescrevendo arquivo...\n");
     freopen(usuarios[id].username, "w", fp);
     fclose(fp);
+}
+
+void sendName(int id) {
+
 }
 
 void *connection_handler(void *socket_desc)
@@ -521,6 +530,7 @@ void *connection_handler(void *socket_desc)
         printf("Mensagem: %s\n", mensagem);
         pthread_mutex_lock(&lock);
         commandCall(command, mensagem, username, id);
+        sendName(id);
         pthread_mutex_unlock(&lock);
         //Send the message back to client
         //write(sock , client_message , strlen(client_message));
