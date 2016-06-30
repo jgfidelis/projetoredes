@@ -37,6 +37,11 @@ void *reader(void *socket_desc) {
             //fputs(recv_msg, stdout);
             printf("\n%s\n", recv_msg);
             printName(username);
+
+	    if(strcmp(recv_msg, "Você foi desconectado\n") == 0) {
+		exit(0);
+	    }
+
             //printf("\n oi \n oi \n");
             bzero(recv_msg, MAX_LINE);
             //printf("\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA ");
