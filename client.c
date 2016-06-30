@@ -26,16 +26,21 @@ void *reader(void *socket_desc) {
     //printf("lendo\n");
     int sock = *(int*)socket_desc;
     int len;
-
+    int i;
     while((len = recv(sock , recv_msg , MAX_LINE , 0)) > 0){
             pthread_mutex_lock(&lock);
             //printf("\r");
+            //for (i=0; i<3+strlen(username);i++) printf("\b");
+            //printf("\33[2K\r");
+            //fprintf(stdout, "\33[2K\r%s\n", recv_msg);
+            //fflush(stdout);
             //fputs(recv_msg, stdout);
-            printf("\r%s", recv_msg);
+            printf("\n%s\n", recv_msg);
+            printName(username);
             //printf("\n oi \n oi \n");
             bzero(recv_msg, MAX_LINE);
             //printf("\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA ");
-            printf("\n[%s] ", username);
+            //printf("[%s] ", username);
             //printf("HELLO\n");//funciona!
             pthread_mutex_unlock(&lock);
         }
