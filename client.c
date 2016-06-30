@@ -21,37 +21,6 @@ void printName(char *username) {
 
 }
 
-void *reader(void *socket_desc) {
-    char recv_msg[MAX_LINE];
-    //printf("lendo\n");
-    int sock = *(int*)socket_desc;
-    int len;
-    int i;
-    while((len = recv(sock , recv_msg , MAX_LINE , 0)) > 0){
-            pthread_mutex_lock(&lock);
-            //printf("\r");
-            //for (i=0; i<3+strlen(username);i++) printf("\b");
-            //printf("\33[2K\r");
-            //fprintf(stdout, "\33[2K\r%s\n", recv_msg);
-            //fflush(stdout);
-            //fputs(recv_msg, stdout);
-            printf("\n%s\n", recv_msg);
-            printName(username);
-            //printf("\n oi \n oi \n");
-            bzero(recv_msg, MAX_LINE);
-            //printf("\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA ");
-            //printf("[%s] ", username);
-            //printf("HELLO\n");//funciona!
-            pthread_mutex_unlock(&lock);
-        }
-        //printf("oi\n");
-        //printName(username);
-        close(sock);
-
-
-
-}
-
 int main(int argc, char * argv[])
 {
     FILE *fp;
@@ -108,16 +77,43 @@ int main(int argc, char * argv[])
 
 
     //Nome enviado ao servidor!
-    printName(username);
-    pthread_t sniffer_thread;
-    int *new_sock = malloc(1);
-    *new_sock = s;
+    //printName(username);
+    fprintf(stdout, "[ %s ] ", username);
+    //printf("OLAAAAAAAAA\n");
+    fd_set rset, allset;
 
-    if( pthread_create( &sniffer_thread , NULL ,  reader , (void*) new_sock) < 0)
-    {
-        perror("could not create thread");
-        return 1;
+    FD_ZERO(&allset);
+    FD_SET(s, &allset);
+    FD_SET(fileno(stdin), &allset);
+
+    int max = s;
+    int nready;
+    if (fileno(stdin) > s)
+        max = fileno(stdin);
+    for(; ;) {
+        rset = allset;
+        nready = select(max+1, &rset, NULL, NULL, NULL);
+        if (FD_ISSET(s, &rset)) {
+            recv(s , recv_msg , MAX_LINE , 0);
+            printf("\n%s\n", recv_msg);
+            printName(username);
+            if (--nready <= 0)
+                continue;
+        }
+        if (FD_ISSET(fileno(stdin), &rset)) {
+            fgets(buf, sizeof(buf), stdin);
+            buf[MAX_LINE-1] = '\0';
+            len = strlen(buf) + 1;
+            send(s, buf, len, 0);
+            //printName(username);
+            //printf("%s\n", buf);
+            printName(username);
+            bzero(buf, MAX_LINE);
+            if (--nready <= 0)
+                continue;
+        }
     }
+
     /*while(1){
 
         if(fgets(buf, sizeof(buf), stdin) != NULL) {
@@ -161,18 +157,6 @@ int main(int argc, char * argv[])
         close(s);
     }*/
 
-    while(fgets(buf, sizeof(buf), stdin)){
-            pthread_mutex_lock(&lock);
-            buf[MAX_LINE-1] = '\0';
-            len = strlen(buf) + 1;
-            send(s, buf, len, 0);
-            //printName(username);
-            //printf("%s\n", buf);
-            printName(username);
-            bzero(buf, MAX_LINE);
-            pthread_mutex_unlock(&lock);
-        }
-    close(s);
     pthread_mutex_destroy(&lock);
     return 0;
 
