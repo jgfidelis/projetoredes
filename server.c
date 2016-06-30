@@ -21,6 +21,7 @@ void *connection_handler(void *);
 pthread_mutex_t lock;
 int numberOfUsers;
 int numberOfGroups;
+int messageId = 0;
 typedef struct _usuario {
     char username[100];
     int online;
@@ -56,6 +57,7 @@ void commandCall(char *command, char restOfString[], char userSource[], int sour
         //get username destination
         int i;
         char userDestination[100] = {'\0'};
+        char buffer[1024];
         for (i=0; restOfString[i] != ' '; i++){
             userDestination[i] = restOfString[i];
         }
@@ -73,6 +75,12 @@ void commandCall(char *command, char restOfString[], char userSource[], int sour
 
         //envia mensagem a user
         printf("ENVIANDO!\n");
+        messageId++;
+        
+        int sourceSocket = usuarios[sourceid].socket;
+        snprintf(buffer, sizeof(buffer), "Menssagem %d recebida\n", messageId);
+        send(sourceSocket, buffer, strlen(buffer)+1, 0);
+
         sendToUser(userDestination, mensagem, userSource);
 
     }
@@ -106,6 +114,7 @@ void commandCall(char *command, char restOfString[], char userSource[], int sour
             mensagem[i] = restOfString[i+len+1];
         mensagem[1999] = '\0';
 
+        messageId++;
         //envia ao grupo a mensagem
         sendToGroup(groupName, mensagem, userSource, sourceid);
 
@@ -297,7 +306,19 @@ void sendToUser(char userDestination[], char mensagem[], char userSource[]) {
 
     FILE *fp;
     
-    int num = getUserNumber(userDestination);
+    int num = getUserNumber(userSource);
+
+    int len = strlen(buffer) + 1;
+
+    int sockUser = usuarios[num].socket;
+
+    num = usuarios[num].socket;
+
+    snprintf(buffer, sizeof(buffer), "Menssagem %d enfileirada\n", messageId);
+
+    send(sockUser, buffer, len, 0);
+
+    num = getUserNumber(userDestination);
     if (num < 0) {
         //envia erro pro userSource, userDestination nao existe
         num = getUserNumber(userSource);
@@ -315,19 +336,26 @@ void sendToUser(char userDestination[], char mensagem[], char userSource[]) {
     
     if (usuarios[num].online == 1) {
         //envia ja
-        int sockUser = usuarios[num].socket;
+        sockUser = usuarios[num].socket;
 
         buffer[1023] = '\0';
 
-        int len = strlen(buffer) + 1;
-
         printf("enviando para %s\n", userDestination);
+
+        send(sockUser, buffer, len, 0);
+
+        num = getUserNumber(userSource);
+
+        sockUser = usuarios[num].socket;
+
+        snprintf(buffer, sizeof(buffer), "Menssagem %d enviada\n", messageId);
 
         send(sockUser, buffer, len, 0);
     } else {
         //TODO colocar para enviar depois
         printf("Colocando msgm no arquivo\n");
         fp = fopen(userDestination, "a+");
+        snprintf(buffer, sizeof(buffer), "%d [%s>] %s", messageId, userSource, mensagem);
         fputs(buffer, fp);
         fclose(fp);
 
