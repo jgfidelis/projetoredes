@@ -21,6 +21,43 @@ void printName(char *username) {
 
 }
 
+/*
+void *reader(void *socket_desc) {
+    char recv_msg[MAX_LINE];
+    //printf("lendo\n");
+    int sock = *(int*)socket_desc;
+    int len;
+    int i;
+    while((len = recv(sock , recv_msg , MAX_LINE , 0)) > 0){
+            pthread_mutex_lock(&lock);
+            //printf("\r");
+            //for (i=0; i<3+strlen(username);i++) printf("\b");
+            //printf("\33[2K\r");
+            //fprintf(stdout, "\33[2K\r%s\n", recv_msg);
+            //fflush(stdout);
+            //fputs(recv_msg, stdout);
+            printf("\n%s\n", recv_msg);
+            printName(username);
+
+	    if(strcmp(recv_msg, "Você foi desconectado\n") == 0) {
+		exit(0);
+	    }
+
+            //printf("\n oi \n oi \n");
+            bzero(recv_msg, MAX_LINE);
+            //printf("\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA ");
+            //printf("[%s] ", username);
+            //printf("HELLO\n");//funciona!
+            pthread_mutex_unlock(&lock);
+        }
+        //printf("oi\n");
+        //printName(username);
+        close(sock);
+
+
+
+} */
+
 int main(int argc, char * argv[])
 {
     FILE *fp;
