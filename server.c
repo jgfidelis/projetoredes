@@ -36,6 +36,28 @@ typedef struct _group {
     int usersInGroup;
 } Group;
 
+#ifdef WIN32
+#include <windows.h>
+#elif _POSIX_C_SOURCE >= 199309L
+#include <time.h>   // for nanosleep
+#else
+#include <unistd.h> // for usleep
+#endif
+
+void sleep_ms(int milliseconds) // cross-platform sleep function
+{
+#ifdef WIN32
+    Sleep(milliseconds);
+#elif _POSIX_C_SOURCE >= 199309L
+    struct timespec ts;
+    ts.tv_sec = milliseconds / 1000;
+    ts.tv_nsec = (milliseconds % 1000) * 1000000;
+    nanosleep(&ts, NULL);
+#else
+    usleep(milliseconds * 1000);
+#endif
+}
+
 Usuario usuarios[100];
 Group grupos[100];
 void sendToUser(char userDestination[], char mensagem[], char userSource[]);
@@ -206,10 +228,10 @@ int main(int argc, char* argv[])
 
 void logout(int sourceid) {
     usuarios[sourceid].online = 0;
-    
+
     int sock = usuarios[sourceid].socket;
     char buffer[1024];
-    
+
     snprintf(buffer, sizeof(buffer), "Você foi desconectado\n");
 
     send(sock, buffer, strlen(buffer)+1, 0);
@@ -218,7 +240,7 @@ void logout(int sourceid) {
 void sendInvalidCommand(int sourceid) {
     int sock = usuarios[sourceid].socket;
     char buffer[1024];
-    
+
     snprintf(buffer, sizeof(buffer), "Comando inválido\n");
 
     send(sock, buffer, strlen(buffer)+1, 0);
@@ -232,7 +254,9 @@ void printUserOnline(int sourceid) {
     send(sock, buffer, strlen(buffer)+1, 0);
     bzero(buffer, 1024);
     for (i = 0; i < numberOfUsers; i++){
+        sleep_ms(100);
         if (usuarios[i].online == 1){
+            printf("SENDING..\n");
             snprintf(buffer, sizeof(buffer), "| %s | online |\n", usuarios[i].username);
             send(sock, buffer, strlen(buffer)+1, 0);
             bzero(buffer, 1024);
@@ -319,21 +343,22 @@ void sendToUser(char userDestination[], char mensagem[], char userSource[]) {
     send(sockUser, buffer, len, 0);
 
     num = getUserNumber(userDestination);
+
     if (num < 0) {
         //envia erro pro userSource, userDestination nao existe
         num = getUserNumber(userSource);
 
         int sock = usuarios[num].socket;
-    
+
         snprintf(buffer, sizeof(buffer), "Usuario inexistente\n");
         send(sock, buffer, strlen(buffer)+1, 0);
 
         return;
     }
-    
+
     printf("Usuario achado em %d\n", num);
     snprintf(buffer, sizeof(buffer), "[%s>] %s", userSource, mensagem);
-    
+
     if (usuarios[num].online == 1) {
         //envia ja
         sockUser = usuarios[num].socket;
@@ -364,7 +389,7 @@ void sendToUser(char userDestination[], char mensagem[], char userSource[]) {
         num = getUserNumber(userSource);
 
         int sock = usuarios[num].socket;
-    
+
         snprintf(buffer, sizeof(buffer), "Usuario offline, sua mensagem sera estregue proxima vez que este usuario entrar\n");
         send(sock, buffer, strlen(buffer)+1, 0);
     }
@@ -378,7 +403,7 @@ void createGroup(char group[], int sourceid) {
             //grupo ja existe
             int sock = usuarios[sourceid].socket;
             char buffer[1024];
-    
+
             snprintf(buffer, sizeof(buffer), "Grupo ja existente\n");
 
             send(sock, buffer, strlen(buffer)+1, 0);
