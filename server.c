@@ -128,6 +128,7 @@ void commandCall(char *command, char restOfString[], char userSource[], int sour
         for (i=0; restOfString[i] != ' '; i++){
             groupName[i] = restOfString[i];
         }
+        printf("NOME GRUPO: %s\n", groupName);
         groupName[i] = '\0';
         int len = strlen(groupName);
         char mensagem[2000];
@@ -256,7 +257,6 @@ void printUserOnline(int sourceid) {
     for (i = 0; i < numberOfUsers; i++){
         sleep_ms(100);
         if (usuarios[i].online == 1){
-            printf("SENDING..\n");
             snprintf(buffer, sizeof(buffer), "| %s | online |\n", usuarios[i].username);
             send(sock, buffer, strlen(buffer)+1, 0);
             bzero(buffer, 1024);
@@ -291,7 +291,7 @@ int registraUsuario(char usernameToRegister[], int sock) {
     }
 
     //aqui ainda nao existia, criar novo
-    printf("criando novo usuario %s\n", usernameToRegister);
+    //printf("criando novo usuario %s\n", usernameToRegister);
     strcpy(usuarios[numberOfUsers].username, usernameToRegister);
     usuarios[numberOfUsers].online = 1;
     usuarios[numberOfUsers].socket = sock;
@@ -316,6 +316,7 @@ int getUserNumber(char user[]) {
 int getGroupNumber(char grupo[]) {
      int i;
     for (i = 0; i < numberOfGroups; i++){
+        printf("COMPARANDO %s e %s", grupos[i].groupName, grupo);
         if (strcmp(grupos[i].groupName, grupo) == 0) {
             return i;
         }
@@ -356,7 +357,7 @@ void sendToUser(char userDestination[], char mensagem[], char userSource[]) {
         return;
     }
 
-    printf("Usuario achado em %d\n", num);
+    //printf("Usuario achado em %d\n", num);
     snprintf(buffer, sizeof(buffer), "[%s>] %s", userSource, mensagem);
 
     if (usuarios[num].online == 1) {
@@ -365,7 +366,7 @@ void sendToUser(char userDestination[], char mensagem[], char userSource[]) {
 
         buffer[1023] = '\0';
 
-        printf("enviando para %s\n", userDestination);
+        //printf("enviando para %s\n", userDestination);
 
         send(sockUser, buffer, len, 0);
 
@@ -412,10 +413,17 @@ void createGroup(char group[], int sourceid) {
     }
 
     //chegou aqui eh para criar
+    int len = strlen(group);
+    group[len-1] = '\0';
     strcpy(grupos[numberOfGroups].groupName, group);
     grupos[numberOfGroups].usersids[0] = sourceid;
     grupos[numberOfGroups].usersInGroup=1;
     //avisar que deu certo?
+    int sock = usuarios[sourceid].socket;
+    char buffer[1024];
+    snprintf(buffer, sizeof(buffer), "Grupo %s criado com sucesso\n", group);
+
+    send(sock, buffer, strlen(buffer)+1, 0);
     numberOfGroups++;
 
 }
@@ -426,7 +434,8 @@ void joinGroup(char group[], int sourceid) {
     char buffer[1024];
 
     int sock = usuarios[sourceid].socket;
-
+    int len = strlen(group);
+    group[len-1] = '\0';
     for (i = 0; i < numberOfGroups; i++){
         if (strcmp(group, grupos[i].groupName) == 0) {
             int num =grupos[i].usersInGroup;
@@ -450,6 +459,10 @@ void joinGroup(char group[], int sourceid) {
             return;
         }
     }
+
+    snprintf(buffer, sizeof(buffer), "Grupo não existe!\n");
+
+    send(sock, buffer, strlen(buffer)+1, 0);
 }
 
 void sendToGroup(char groupName[], char mensagem[], char userSource[], int sourceid) {
@@ -457,6 +470,7 @@ void sendToGroup(char groupName[], char mensagem[], char userSource[], int sourc
     snprintf(buffer, sizeof(buffer), "(Em: %s) [%s>] %s", groupName, userSource, mensagem);
 
     int sock = usuarios[sourceid].socket;
+    printf("Procurando grupo: %s\n", groupName);
     int num = getGroupNumber(groupName);
     if (num < 0) {
         //avisar que deu ruim
