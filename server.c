@@ -469,9 +469,12 @@ void sendToGroup(char groupName[], char mensagem[], char userSource[], int sourc
     char buffer[2000];
     snprintf(buffer, sizeof(buffer), "(Em: %s) [%s>] %s", groupName, userSource, mensagem);
 
+    char feedback[1000];
     int sock = usuarios[sourceid].socket;
     printf("Procurando grupo: %s\n", groupName);
     int num = getGroupNumber(groupName);
+    int sockSource;
+    FILE *fp;
     if (num < 0) {
         //avisar que deu ruim
         snprintf(buffer, sizeof(buffer), "Grupo não existe\n");
@@ -493,6 +496,18 @@ void sendToGroup(char groupName[], char mensagem[], char userSource[], int sourc
             } else {
                 //TODO usuario esta offline!
                 //salvar em aquivo
+		printf("Colocando msgm no arquivo\n");
+        	fp = fopen(usuarios[id].username, "a+");
+        	fputs(buffer, fp);
+       		fclose(fp);
+
+       		usuarios[id].hasOfflineMessages += 1;
+
+       		int sockSource = usuarios[sourceid].socket;
+
+		snprintf(feedback, sizeof(feedback), "Mensagem enfileirada para usuarios offline");
+
+        	send(sockSource, feedback, strlen(feedback)+1, 0);
             }
         }
     }
